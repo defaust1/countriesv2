@@ -1,0 +1,15 @@
+controllers:
+    resource: ../src/Controller/
+    type: attribute
+    
+country_new:
+    path: /country/new
+    controller: App\Controller\CountryController::new
+
+country_edit:
+    path: /country/{id}/edit
+    controller: App\Controller\CountryController::edit
+
+country_delete:
+    path: /country/{id}/delete
+    controller: App\Controller\CountryController::delete
