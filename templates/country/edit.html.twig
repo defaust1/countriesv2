@@ -1,0 +1,22 @@
+{% extends 'base.html.twig' %}
+
+
+{% block title %}Editar País{% endblock %}
+
+{% block body %}
+<html>
+<head>
+    <title>Edicion de Países</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+    <h1>Editar País</h1>
+
+    {{ form_start(form) }}
+        {{ form_row(form.NombreComun) }}<br>
+        {{ form_row(form.NombreOficial) }}<br>
+        {{ form_row(form.Capital) }}<br>
+        {{ form_row(form.save, {'attr': {'class': 'btn btn-primary'}}) }}
+    {{ form_end(form) }}
+
+    <a href="{{ path('countries_list') }}" class="btn btn-secondary">Volver al listado</a>
+{% endblock %}
