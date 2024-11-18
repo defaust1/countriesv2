@@ -10,24 +10,31 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\Form\Extension\Core\Type\SubmitType;
+use Knp\Component\Pager\PaginatorInterface;
 
 class CountryController extends AbstractController
 {
     #[Route('/update-countries', name: 'update_countries')]
-    public function updateCountries(CountryService $countryService, EntityManagerInterface $em): Response
+    public function updateCountries(CountryService $countryService, 
+    EntityManagerInterface $em): Response
     {
         // Paso 1: Llamar al servicio para obtener los datos de los países
         $countriesData = $countryService->fetchCountries();
+        // Paso 1b: añadimos variables para contar el numero de añadidos nuevos
+        $repository = $em->getRepository(Country::class);
+        $addedCount = 0; //fin de actualizacion añadidos (ELIMINAR)
 
         // Paso 2: Recorrer los datos de cada país y guardarlos/actualizarlos en la base de datos
         foreach ($countriesData as $countryData) {
             // Intentar buscar el país en la base de datos por su código ISO
             $country = $em->getRepository(Country::class)->findOneBy(['codigo_iso' => $countryData['cca3']]);
-
             // Si no existe, se crea un nuevo país
             if (!$country) {
                 $country = new Country();
                 $country->setCodigoIso($countryData['cca3']);
+                $addedCount++; //Suma el pais nuevo para mostrarlo
             }
 
             // Actualizar los datos del país
@@ -51,9 +58,12 @@ class CountryController extends AbstractController
         $em->flush();
 
         // Devolver una respuesta indicando que el proceso ha terminado
-        return new Response('Los países han sido actualizados y guardados en la base de datos.');
+        return $this->redirectToRoute('countries_list', [
+            'addedCount' => $addedCount,
+        ]);
     }
-    #[Route('/countries', name: 'countries_list')]
+    // Mostrar listado paises en Index.html.twig. DESACTUALIZADO 15/11/2024
+    /*#[Route('/countries', name: 'countries_list')]
     public function showCountries(EntityManagerInterface $em): Response
     {
         // Obtener todos los países desde la base de datos
@@ -62,6 +72,36 @@ class CountryController extends AbstractController
         // Renderizar una vista y pasarle los países
         return $this->render('country/index.html.twig', [
             'countries' => $countries,
+        ]);
+        
+    }*/
+    //Mostramos con paginacion de 20 y total de paises.
+    #[Route('/countries', name: 'countries_list')]
+    public function index(EntityManagerInterface $em, PaginatorInterface $paginator, Request $request): Response
+    {
+        $countryRepository = $em->getRepository(Country::class);
+        $countries = $countryRepository->findAll();
+
+        // Consulta para contar los países
+         $totalCountries = $countryRepository->createQueryBuilder('c')
+        ->select('COUNT(c.id)')
+        ->getQuery()
+        ->getSingleScalarResult();
+
+        // Recuperar la consulta para todos los países
+        $query = $countryRepository->createQueryBuilder('c')->getQuery();
+
+        // Usar el paginador para dividir los resultados en páginas
+        $pagination = $paginator->paginate(
+            $query, // La consulta para los países
+            $request->query->getInt('page', 1), // Página actual, por defecto 1
+            20 // Número de países por página
+        );
+        $addedCount = $request->query->get('addedCount', null); // Cuantos nuevos hemos añadido
+        return $this->render('country/index.html.twig', [
+            'pagination' => $pagination, // Pasar la paginación a la plantilla
+            'totalCountries' => $totalCountries, //Pasar total de paises
+            'addedCount' => $addedCount, //Paises nuevos a plantilla.
         ]);
     }
     // Método para eliminar un país
@@ -82,8 +122,39 @@ class CountryController extends AbstractController
         } else {
             $this->addFlash('error', 'El país no existe.');
         }
-        return $this->redirectToRoute('countries');
+        return $this->redirectToRoute('countries_list');
     }  
+    // Metodo para editar Paises
+    #[Route('/countries/edit/{id}', name: 'country_edit', methods: ['GET', 'POST'])]
+    public function editCountry(int $id, Request $request, EntityManagerInterface $em): Response
+    {
+        $country = $em->getRepository(Country::class)->find($id);
+
+        if (!$country) {
+            $this->addFlash('error', 'El país no existe.');
+            return $this->redirectToRoute('countries_list'); // Cambia a la ruta de tu listado de países
+        }
+
+        $form = $this->createFormBuilder($country)
+            ->add('NombreComun', TextType::class, ['label' => 'Nombre Comun'])
+            ->add('NombreOficial', TextType::class, ['label' => 'Nombre Oficial'])
+            ->add('Capital', TextType::class, ['label' => ' Capital'])
+            ->add('save', SubmitType::class, ['label' => 'Guardar cambios'])
+            ->getForm();
+
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $em->flush();
+            $this->addFlash('success', 'El país ha sido actualizado con éxito.');
+            return $this->redirectToRoute('countries_list'); // Cambia a la ruta de tu listado de países
+        }
+
+        return $this->render('country/edit.html.twig', [
+            'form' => $form->createView(),
+            'country' => $country,
+        ]);
+    }
 }
 
 /*

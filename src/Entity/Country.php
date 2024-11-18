@@ -109,7 +109,7 @@ class Country
     }
     public function getNombreOficial(): ?string
     {
-        return $this->nombre_comun;
+        return $this->nombre_oficial;
     }
 
     public function setNombreOficial(string $nombre_oficial): self
