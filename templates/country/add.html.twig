@@ -1,0 +1,30 @@
+{% extends 'base.html.twig' %}
+
+
+{% block title %}Añadir Pais{% endblock %}
+
+{% block body %}
+<html>
+<head>
+    <title>Edicion de Países</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+    <h1>Editar País</h1>
+{{ form_start(form) }}
+    {{ form_row(form.nombre_comun) }}<br>
+    {{ form_row(form.nombre_oficial) }}<br>
+    {{ form_row(form.poblacion) }}<br>
+    {{ form_row(form.region) }}<br>
+    {{ form_row(form.codigo_iso) }}<br>
+    {{ form_row(form.capital) }}<br>
+    {{ form_row(form.area) }}<br>
+    {{ form_row(form.lat) }}<br>
+    {{ form_row(form.lng) }}<br>
+    {{ form_row(form.submit)  }}<br>
+{{ form_end(form) }}
+</div>
+</body>
+</html>
+{% endblock %}

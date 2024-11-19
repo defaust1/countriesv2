@@ -3,7 +3,9 @@
 namespace App\Controller;
 
 use App\Entity\Country;
+use App\Repository\CountryRepository;
 use App\Service\CountryService;
+use App\Form\CountryType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,7 +14,10 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Knp\Component\Pager\PaginatorInterface;
+
+
 
 class CountryController extends AbstractController
 {
@@ -88,8 +93,10 @@ class CountryController extends AbstractController
         ->getQuery()
         ->getSingleScalarResult();
 
-        // Recuperar la consulta para todos los países
-        $query = $countryRepository->createQueryBuilder('c')->getQuery();
+        // Recuperar la consulta para todos los países y ordenar por orden alfabetico.
+        $query = $countryRepository->createQueryBuilder('c')
+        ->orderBy('c.nombre_comun', 'ASC')
+        ->getQuery();
 
         // Usar el paginador para dividir los resultados en páginas
         $pagination = $paginator->paginate(
@@ -138,6 +145,11 @@ class CountryController extends AbstractController
         $form = $this->createFormBuilder($country)
             ->add('NombreComun', TextType::class, ['label' => 'Nombre Comun'])
             ->add('NombreOficial', TextType::class, ['label' => 'Nombre Oficial'])
+            ->add('CodigoIso', TextType::class, ['label' => ' CodigoIso'])
+            ->add('Region', TextType::class, ['label' => ' Region'])
+            ->add('Subregion', TextType::class, ['label' => ' Subregion'])
+            ->add('Poblacion', TextType::class, ['label' => ' Poblacion'])
+            ->add('Area', TextType::class, ['label' => ' Area'])
             ->add('Capital', TextType::class, ['label' => ' Capital'])
             ->add('save', SubmitType::class, ['label' => 'Guardar cambios'])
             ->getForm();
@@ -155,7 +167,53 @@ class CountryController extends AbstractController
             'country' => $country,
         ]);
     }
+    //Para buscar por letras en el buscador de index
+    #[Route('/countries/search', name: 'country_search', methods: ['GET'])]
+    public function search(Request $request, CountryRepository $countryRepository): JsonResponse
+    {
+        $searchTerm = $request->query->get('q', '');
+        $countries = $countryRepository->findBySearchTerm($searchTerm);
+
+        $results = [];
+        foreach ($countries as $country) 
+        {
+            $results[] = ['id' => $country->getId(), 
+            'nombre_comun' => $country->getNombreComun(),
+            'nombre_oficial' => $country->getNombreOficial(),
+            'codigo_iso' => $country->getCodigoIso(),
+            'capital' => $country->getCapital(),
+            'region' => $country->getRegion(),
+            'subregion' => $country->getSubregion(),
+            'poblacion' => $country->getpoblacion(),
+            'area' => $country->getArea()];
+        }
+
+        return $this->json($results);
+    }
+    //Para crear nuevos paises en el caso de que nos falte algun pais.
+    #[Route('/countries/add', name: 'country_add')]
+    public function add(Request $request, EntityManagerInterface $entityManager): Response
+    {
+        $country = new Country();
+        $form = $this->createForm(CountryType::class, $country);
+
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            // Guardar el nuevo país en la base de datos
+            $entityManager->persist($country);
+            $entityManager->flush();
+
+            $this->addFlash('success', 'País añadido exitosamente!');
+            return $this->redirectToRoute('countries_list');
+        }
+
+        return $this->render('country/add.html.twig', [
+            'form' => $form->createView(),
+        ]);
+    }
 }
+
 
 /*
 namespace App\Controller;
